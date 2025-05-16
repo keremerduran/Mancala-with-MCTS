@@ -1,57 +1,41 @@
 import json
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import torch.nn.functional as F
 from NN import NeuralNet
 import time
+import multiprocessing
 
-start_time = time.time()
+# ============================================
+# EarlyStopping helper
+# ============================================
+class EarlyStopping:
+    def __init__(self, patience=2, delta=0.0, restore_best=True):
+        self.patience = patience
+        self.delta = delta
+        self.best_loss = float('inf')
+        self.counter = 0
+        self.best_state = None
+        self.restore_best = restore_best
 
-file_path = r'C:\Users\erdur\Desktop\Using Neural Networks and MCTS to play Mancala\games\fully_random_games2.json'
-model_path = r'C:\Users\erdur\Desktop\Using Neural Networks and MCTS to play Mancala\models\model_trained_on_random_games.pth'
+    def step(self, val_loss, model):
+        if val_loss < self.best_loss - self.delta:
+            self.best_loss = val_loss
+            self.counter = 0
+            if self.restore_best:
+                self.best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+        else:
+            self.counter += 1
+        return self.counter >= self.patience
 
-# Loading the data
-with open(file_path, 'r') as file:
-    data = json.load(file)
+    def restore(self, model):
+        if self.best_state is not None:
+            model.load_state_dict(self.best_state)
 
-def get_shape(lst):
-    if isinstance(lst, list) and lst:
-        return [len(lst)] + get_shape(lst[0])  # Get the length of the current list and recurse for the first element
-    else:
-        return []
-
-print(get_shape(data))
-
-game_states = []
-action_probabilities = []
-win_probabilities = []
-
-for state in data:
-    game_states.append(state[0])
-    action_probabilities.append(state[1])
-    win_probabilities.append(state[2])
-
-
-N = 24 # The normalization value
-game_states = [[min(N, stones)/ N for stones in state] for state in game_states]
-
-# Round action probabilities to 3 decimal places
-for actions in action_probabilities:
-    for probability in actions:
-        probability = round(probability, 3)
-
-
-game_states = torch.tensor(game_states, dtype=torch.float32)
-action_probabilities = torch.tensor(action_probabilities, dtype=torch.float32)
-win_probabilities = torch.tensor(win_probabilities, dtype=torch.float32)
-
-print(f"Shape of tensor game state: {game_states.size()}")
-print(f"Shape of tensor action probabilities: {action_probabilities.size()}")
-print(f"Shape of tensor win probabilities: {win_probabilities.size()}")
-
-
+# ============================================
+# Dataset definition
+# ============================================
 class GamesDataset(Dataset):
-
     def __init__(self, game_states, action_probabilities, win_probabilities):
         self.game_states = game_states
         self.action_probabilities = action_probabilities
@@ -59,63 +43,117 @@ class GamesDataset(Dataset):
 
     def __len__(self):
         return len(self.game_states)
-    
+
     def __getitem__(self, index):
         return {
             'input': self.game_states[index],
-            'action_probabilities': self.action_probabilities[index].reshape(-1),
-            'win_probabilities': self.win_probabilities[index].reshape(-1)
+            'action_probabilities': self.action_probabilities[index].view(-1),
+            'win_probabilities': self.win_probabilities[index].view(-1)
         }
-    
-dataset = GamesDataset(game_states, action_probabilities, win_probabilities)
 
-dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+# ============================================
+# Loss
+# ============================================
+def loss_function(target_p, pred_p, target_v, pred_v):
+    val_loss = F.mse_loss(pred_v, target_v)
+    policy_loss = F.cross_entropy(pred_p, target_p)
+    return val_loss + policy_loss
 
-device = torch.device("cuda" if torch.cuda.is_available else "cpu")
+# ============================================
+# Main training
+# ============================================
+def main():
+    start_time = time.time()
 
-model = NeuralNet()
-model.load_state_dict(torch.load(model_path))
-print(device)
-model.to(device)
-model.eval()
+    # Paths
+    #file_path  = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_trialgames.json'
+    file_path2 = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_2.json'
+    model_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_model_MANGO_fifthtraining8000games.pth'
 
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # Load and preprocess
+    #with open(file_path, 'r') as f:
+    #    data1 = json.load(f)
+    with open(file_path2, 'r') as f:
+        data = json.load(f)
+    #data = data1 + data2
+    game_states, action_probs, win_probs = zip(*data)
+    N = 24
+    game_states = torch.tensor([[min(N, s)/N for s in st] for st in game_states], dtype=torch.float32)
+    action_probs = torch.tensor(action_probs, dtype=torch.float32)
+    win_probs    = torch.tensor(win_probs, dtype=torch.float32)
 
-def loss_function(target_action_p, sampled_action_p, game_result, sampled_value, c):
+    # Dataset & split
+    full_ds = GamesDataset(game_states, action_probs, win_probs)
+    n_total = len(full_ds)
+    n_val   = int(0.10 * n_total)
+    n_train = n_total - n_val
+    train_ds, val_ds = random_split(full_ds, [n_train, n_val], generator=torch.Generator().manual_seed(42))
 
-    value_loss = F.mse_loss(sampled_value, game_result)
-    policy_loss = F.cross_entropy(sampled_action_p, target_action_p)
-    l2_reg = torch.tensor(0.).to(sampled_value.device)
-    for parameter in model.parameters():
-        l2_reg += torch.norm(parameter)**2
-    reg_loss = c * l2_reg
+    # DataLoaders
+    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True,  num_workers=4, pin_memory=True)
+    val_loader   = DataLoader(val_ds,   batch_size=64, shuffle=False, num_workers=4, pin_memory=True)
 
-    return value_loss + policy_loss + reg_loss
+    # Device & model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = NeuralNet()  # ensure dropout layers are added in NN.py if desired
+    model.load_state_dict(torch.load(model_path, weights_only=True))
+    model.to(device)
 
+    # Optimizer with stronger weight decay
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.002, weight_decay=1e-3)
+    # Scheduler to reduce LR on plateau
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=1, verbose=True)
 
-losses = []
-for epoch in range(4):
-    total_loss = 0
-    for batch in dataloader:
-        inputs = batch['input'].to(device)
-        target_action_probabilities = batch['action_probabilities'].to(device)
-        target_win_probability = batch['win_probabilities'].to(device)
+    # Early stopping
+    early_stopper = EarlyStopping(patience=2, delta=0.0)
 
-        sampled_action_probabilities, sampled_win_probability = model(inputs)
+    num_epochs = 8
+    for epoch in range(1, num_epochs+1):
+        # Training
+        model.train()
+        train_loss = 0.0
+        for batch in train_loader:
+            x = batch['input'].to(device)
+            tp = batch['action_probabilities'].to(device)
+            tv = batch['win_probabilities'].to(device)
+            pp, vv = model(x)
+            loss = loss_function(tp, pp, tv, vv)
 
-        loss = loss_function(target_action_probabilities, sampled_action_probabilities, target_win_probability, sampled_win_probability, c=0.0001)
-        total_loss += loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.item()
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-    
-    average_loss = total_loss / len(dataloader)
-    losses.append(average_loss)
+        avg_train = train_loss / len(train_loader)
 
-    print(f"Epoch {epoch+1}/{4}, Loss: {average_loss:.4f} ")
+        # Validation
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for batch in val_loader:
+                x = batch['input'].to(device)
+                tp = batch['action_probabilities'].to(device)
+                tv = batch['win_probabilities'].to(device)
+                pp, vv = model(x)
+                val_loss += loss_function(tp, pp, tv, vv).item()
+        avg_val = val_loss / len(val_loader)
 
-torch.save(model.state_dict(), model_path)
-    
+        print(f"Epoch {epoch}/{num_epochs}  "
+              f"Train Loss: {avg_train:.4f}  Val Loss: {avg_val:.4f}")
 
-print("--- %s seconds ---" % (time.time() - start_time))
+        # Scheduler step & early stopping check
+        scheduler.step(avg_val)
+        if early_stopper.step(avg_val, model):
+            print(f"Early stopping triggered at epoch {epoch}")
+            early_stopper.restore(model)
+            break
+
+    # Save best model
+    save_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_MANGO_sixthraining8000games_64batchsize.pth'
+    torch.save(model.state_dict(), save_path)
+    print(f"Saved best model to {save_path}")
+    print(f"--- {time.time() - start_time:.1f} sec ---")
+
+if __name__ == '__main__':
+    multiprocessing.freeze_support()
+    main()

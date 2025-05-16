@@ -47,15 +47,31 @@ class Game():
         for i in range(value):
             board_state[(action + i + 1) % 13] += 1
 
-    def determine_winner(self, board_state):
+    def determine_winner(self, board_state, player=None):
         if sum(board_state[:6]) == 0:
             board_state[6] += sum(board_state[7:13])
         elif sum(board_state[7:13]) == 0:
             board_state[13] += sum(board_state[:6])
+            
         if board_state[6] > 24: 
-            return "first_player"
+            winner = "first_player"
         elif board_state[13] > 24:
-            return "second_player"
+            winner = "second_player"
         elif board_state[6] == 24 and board_state[6] == 24:
-            return "draw"
+            winner = "draw"
 
+        if player != None:
+            if winner == "first_player":
+                if player == "p1":
+                    winner = "p1"
+                else:
+                    winner = "p2"
+            elif winner == "second_player":
+                if player == "p1":
+                    winner = "p2"
+                else:
+                    winner = "p1"
+            else:
+                winner = None
+
+        return winner

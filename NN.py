@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchsummary import summary
 
 class NeuralNet(nn.Module):
 
@@ -42,17 +43,22 @@ class NeuralNet(nn.Module):
         return policy, value
 
 
-"""
-model = NeuralNet()
-board_state = torch.tensor([4,4,4,4,4,4,0,4,4,4,4,4,4,0], dtype=torch.float)
-print(model.summary())
-#print(board_state)
-board_state = board_state.unsqueeze(0)  
-#print(board_state)
-#print(len(board_state))
-#print(len(board_state[0]))
+if __name__ == "__main__":
+    model = NeuralNet()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    summary(model, input_size=(14,))
+    
+    #board_state = torch.tensor([4,4,4,4,4,4,0,4,4,4,4,4,4,0], dtype=torch.float)
+    #total_params = sum(p.numel() for p in model.parameters())
+    #print(f"Total number of parameters: {total_params}")
+    #print(board_state)
+    #board_state = board_state.unsqueeze(0)  
+    #print(board_state)
+    #print(len(board_state))
+    #print(len(board_state[0]))
 
-probabilities, value = model(board_state)
-#print(probabilities)
-#print(value)
-"""
+    #probabilities, value = model(board_state)
+    #print(probabilities)
+    #print(value)
+
