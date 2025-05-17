@@ -1,9 +1,18 @@
-import numpy as np 
-from Game import Game
-import time
-import json
+"""
+This script generates games where actions on both sides are selected randomly
+This is useful because random games are significantly faster to generate and even though
+game quality is very low, they can still serve to pretrain the model.
+
+"""
+
 import os
 import copy
+import time
+
+import numpy as np 
+import json
+
+from Game import Game
 from MCTS import MCTS_Node
 
 start_time = time.time()
@@ -14,6 +23,7 @@ Game = Game()
 
 
 def play_games(state_node, game, n_of_games):
+
     games = []
     for i in range(n_of_games):
         state = copy.deepcopy(state_node)
@@ -22,12 +32,12 @@ def play_games(state_node, game, n_of_games):
         while not state.game_over():
             game_length += 1
 
-            random_probabilities = np.random.rand(state.n_of_children)
-            r_action_probabilities = random_probabilities / np.sum(random_probabilities)
-            action = np.random.choice(range(state.n_of_children), p=r_action_probabilities)
+            random_probabilities = np.random.rand(state.n_of_children) 
+            r_action_probabilities = random_probabilities / np.sum(random_probabilities) # Normalizing probabilities
+            action = np.random.choice(range(state.n_of_children), p=r_action_probabilities) # Randomly choosing an action with respect to the probabilities
             action = state.moves[action] # This line is necessary so that the index of the chosen action matches the correct index on the board
-            next_state = game.act(state.state, action)
-            next_state = MCTS_Node(next_state)
+            next_state = game.act(state.state, action) # Taking that action and receiving the next state as an array
+            next_state = MCTS_Node(next_state) # Converting the array into a MCTS_Node object 
 
             masked_action_probabilities = []
             count = 0
@@ -57,7 +67,7 @@ def play_games(state_node, game, n_of_games):
 
 def save_games(game_data):
 
-    file_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\08_05_25_4000g_fullyrandom.json'
+    file_path = r' '
 
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
@@ -70,8 +80,9 @@ def save_games(game_data):
         json.dump(data, file)
     
 
-games = play_games(initial_board_state, Game, n_of_games=4000   )
+if __name__ == '__main__':
+    games = play_games(initial_board_state, Game, n_of_games=4000)
 
-save_games(games)
+    save_games(games)
 
-print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds ---" % (time.time() - start_time))

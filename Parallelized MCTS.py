@@ -4,7 +4,7 @@ from multiprocessing import Barrier, Queue
 import logging
 import time
 import numpy as np
-from NN import NeuralNet  # Import Neural Network from separate file
+from NN import NeuralNet  
 from Game import Game
 
 # Initialize the logger
@@ -15,7 +15,7 @@ class MCTS_Node:
         self.state = state
         self.moves = self.possible_moves()
         self.n_of_children = len(self.possible_moves())
-        self.N_b = 1 # Maybe this should be initialised as 0 I'm not sure yet
+        self.N_b = 1 
         self.N = np.zeros(self.n_of_children) # Visit count
         self.W = np.zeros(self.n_of_children) # Total action value
         self.Q = np.zeros(self.n_of_children) # Mean action value
@@ -71,7 +71,7 @@ class WorkerProcess(mp.Process):
                     process_id, inference_result = self.result_queue.get()
                     if process_id == self.process_id:
                         break
-                    self.result_queue.put((process_id, inference_result))  # Put back for others
+                    self.result_queue.put((process_id, inference_result))  
 
                 if state_node is not None and not state_node.game_over():
                     infer_start = time.time()
@@ -86,7 +86,7 @@ class WorkerProcess(mp.Process):
                 
                 simulations += 1
             
-            self.result_queue.put((self.process_id, self.root_node.N.tolist()))  # Return correct visit counts
+            self.result_queue.put((self.process_id, self.root_node.N.tolist()))  
 
             logging.info(f"Process {self.process_id}: Total search time {total_search_time:.3f}s, inference {total_infer_time:.3f}s, backprop {total_backprop_time:.3f}s")
         

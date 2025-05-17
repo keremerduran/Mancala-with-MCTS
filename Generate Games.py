@@ -1,11 +1,16 @@
+"""
+Delete this
+"""
+import copy
+import time
+import os
+
 import numpy as np 
+import json
+
 from Game import Game
 from NN import NeuralNet
 from MCTS import MCTS, MCTS_Node
-import copy
-import time
-import json
-import os
 
 
 start_time = time.time()
@@ -82,7 +87,7 @@ def play_games(state_node, model, tree_search, n_of_games):
 
 def save_games(game_data):
 
-    file_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\Data\Games\trial_games_1000_games.json'
+    file_path = r' '
 
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
@@ -95,9 +100,11 @@ def save_games(game_data):
         json.dump(data, file)
     
 
-games = play_games(initial_board_state, model, MCTS, n_of_games=1000)
-    
-save_games(games)
+if __name__ == '__main__':
 
+    games = play_games(initial_board_state, model, MCTS, n_of_games=1000)
+        
+    save_games(games)
 
-print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds ---" % (time.time() - start_time))
+

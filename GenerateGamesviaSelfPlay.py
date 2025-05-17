@@ -1,28 +1,39 @@
+"""
+This is the main game generation script. It uses a pretrained model to generate a specified number of 
+games where each action is selected using a combination of that model and Monte Carlo Tree Search.
+
+"""
+
+import copy
+import time
+import os
+
+import json
 import numpy as np 
+import torch
+
 from Game import Game
 from NN import NeuralNet
 from MCTS import MCTS, MCTS_Node
-import copy
-import time
-import json
-import os
-import torch
 
 
 start_time = time.time()
 
 
-model_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_model_MANGO_fourthtraining16000games.pth'
+model_path = ' '
 
 initial_board_state = MCTS_Node(np.array([4,4,4,4,4,4,0,4,4,4,4,4,4,0])) 
+
 model = NeuralNet()
 model.load_state_dict(torch.load(model_path))
 model.eval()
+
 MCTS = MCTS()
 Game = Game()
 
 
 def play_games(state_node, model, tree_search, n_of_games):
+
     games = []
     for i in range(n_of_games):
         state = copy.deepcopy(state_node)  
@@ -32,12 +43,8 @@ def play_games(state_node, model, tree_search, n_of_games):
         game_length = 0
         while not state.game_over():
             game_length += 1
-            #print(f"PLAYER: {player}")
-            #print(f"ACTUAL GAME STATE: {state.state}")
             action, action_probabilities, altered_state_node = tree_search.simulate(state_node=state, model=model)
-            #print(f"Selected action during actual game: {action}")
             next_state = altered_state_node.child_nodes[action]
-            #print(f"Actual next state: {next_state.state}")
 
             masked_action_probabilities = []
             count = 0
@@ -61,17 +68,15 @@ def play_games(state_node, model, tree_search, n_of_games):
         winner = Game.determine_winner(state.state.tolist(), player)
 
         for state in games[-game_length:]:
-            #print(f"Winner: {winner}")
-            #print(f"State before: {state[-1]}")
             state[-1] = 1 if state[-1] == winner else 0 if state[-1] == None else -1
-            #print(f"State after: {state[-1]}")
+
 
     return games
 
 
 def save_games(game_data):
 
-    file_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_2.json'
+    file_path = ' '
 
     if os.path.exists(file_path):
         with open(file_path, 'r') as file:
@@ -84,9 +89,11 @@ def save_games(game_data):
         json.dump(data, file)
     
 
-games = play_games(initial_board_state, model, MCTS, n_of_games=8000)
+if __name__ == '__main__':
 
-save_games(games)
+    games = play_games(initial_board_state, model, MCTS, n_of_games=8000)
 
+    save_games(games)
 
-print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds ---" % (time.time() - start_time))
+

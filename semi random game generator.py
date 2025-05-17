@@ -1,3 +1,7 @@
+"""
+delete this
+
+"""
 import numpy as np 
 from Game import Game
 from NN import NeuralNet

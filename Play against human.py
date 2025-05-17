@@ -1,15 +1,24 @@
+"""
+delete this 
+
+"""
+
+import copy
+import time
+
 import numpy as np
+import torch
+
 from Game import Game
 from NN import NeuralNet
 from MCTS import MCTS, MCTS_Node
-import copy
-import time
-import torch
+
 
 start_time = time.time()
 
 
 def play(state_node, model, tree_search, game):
+
     state = copy.deepcopy(state_node)
     player = np.random.choice(["p1", "p2"])
     print(f"Current state: {state.state}")
@@ -59,10 +68,11 @@ def play(state_node, model, tree_search, game):
 
 
 if __name__ == "__main__":
+
     MCTS = MCTS()
     Game = Game()
 
-    model_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\08_05_25_model_MANGO_thirdtraining8000games.pth'
+    model_path = ' '
     initial_board_state = MCTS_Node(np.array([4,4,4,4,4,4,0,4,4,4,4,4,4,0]))
     model = NeuralNet()
     model.load_state_dict(torch.load(model_path))

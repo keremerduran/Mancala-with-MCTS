@@ -6,9 +6,7 @@ from NN import NeuralNet
 import time
 import multiprocessing
 
-# ============================================
-# EarlyStopping helper
-# ============================================
+
 class EarlyStopping:
     def __init__(self, patience=2, delta=0.0, restore_best=True):
         self.patience = patience
@@ -32,9 +30,7 @@ class EarlyStopping:
         if self.best_state is not None:
             model.load_state_dict(self.best_state)
 
-# ============================================
-# Dataset definition
-# ============================================
+
 class GamesDataset(Dataset):
     def __init__(self, game_states, action_probabilities, win_probabilities):
         self.game_states = game_states
@@ -51,31 +47,23 @@ class GamesDataset(Dataset):
             'win_probabilities': self.win_probabilities[index].view(-1)
         }
 
-# ============================================
-# Loss
-# ============================================
+
+
 def loss_function(target_p, pred_p, target_v, pred_v):
     val_loss = F.mse_loss(pred_v, target_v)
     policy_loss = F.cross_entropy(pred_p, target_p)
     return val_loss + policy_loss
 
-# ============================================
-# Main training
-# ============================================
+
 def main():
     start_time = time.time()
 
-    # Paths
-    #file_path  = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_trialgames.json'
-    file_path2 = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_2.json'
-    model_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_model_MANGO_fifthtraining8000games.pth'
+    file_path  = r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\10_05_25_8000g_40s_MANGO_fourthtraining_trialgames.json'
+    model_path = ' '
 
-    # Load and preprocess
-    #with open(file_path, 'r') as f:
-    #    data1 = json.load(f)
     with open(file_path2, 'r') as f:
         data = json.load(f)
-    #data = data1 + data2
+
     game_states, action_probs, win_probs = zip(*data)
     N = 24
     game_states = torch.tensor([[min(N, s)/N for s in st] for st in game_states], dtype=torch.float32)
@@ -126,7 +114,7 @@ def main():
 
         avg_train = train_loss / len(train_loader)
 
-        # Validation
+
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -141,17 +129,15 @@ def main():
         print(f"Epoch {epoch}/{num_epochs}  "
               f"Train Loss: {avg_train:.4f}  Val Loss: {avg_val:.4f}")
 
-        # Scheduler step & early stopping check
+
         scheduler.step(avg_val)
         if early_stopper.step(avg_val, model):
             print(f"Early stopping triggered at epoch {epoch}")
             early_stopper.restore(model)
             break
 
-    # Save best model
-    save_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_MANGO_sixthraining8000games_64batchsize.pth'
+    save_path = '  '
     torch.save(model.state_dict(), save_path)
-    print(f"Saved best model to {save_path}")
     print(f"--- {time.time() - start_time:.1f} sec ---")
 
 if __name__ == '__main__':

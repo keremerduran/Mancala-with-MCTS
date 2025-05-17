@@ -1,14 +1,23 @@
+"""
+This script uses a pretrained model to play a specified number of games against an opponent whose move selection is random .
+and returns the winrate of the model
+
+"""
+
+import copy
+import time
+
 import numpy as np 
+import torch
+
 from Game import Game
 from NN import NeuralNet
 from MCTS import MCTS, MCTS_Node
-import copy
-import time
-import torch
+
 
 start_time = time.time()
 
-model_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_MANGO_sixthraining8000games_64batchsize.pth'
+#model_path = ' '
 
 initial_board_state = MCTS_Node(np.array([4,4,4,4,4,4,0,4,4,4,4,4,4,0])) 
 
@@ -40,7 +49,7 @@ def play_games(state_node, model, tree_search, game, n_of_games):
                 next_state = game.act(state.state, action)
                 next_state = MCTS_Node(next_state)
                         
-            # These lines track which player was taking action during that state so that the win/loss information can be appended after the game ends
+            # Track which player was taking action during that state so that the win/loss information can be appended after the game ends
             if (state.state[action] + action) % 13 != 6:
                 player = "p2" if player == "p1" else "p1"
 
@@ -52,9 +61,12 @@ def play_games(state_node, model, tree_search, game, n_of_games):
            
     return games
 
-games = play_games(initial_board_state, model, MCTS, Game, n_of_games=1000)
 
-print(f"Winrate of agent against random opponent: {round(sum(games)/len(games), 3)}")
+if __name__ == '__main__':
 
-print("--- %s seconds ---" % (time.time() - start_time))
+    games = play_games(initial_board_state, model, MCTS, Game, n_of_games=1000)
+
+    print(f"Winrate of agent against random opponent: {round(sum(games)/len(games), 3)}")
+
+    print("--- %s seconds ---" % (time.time() - start_time))
 

@@ -1,11 +1,19 @@
+"""
+This script uses two pretrained models to play games and compare performance over a specified number of games.
+
+"""
+
+import copy
+import time
+
+import torch
 import numpy as np 
+import json
+
 from Game import Game
 from NN import NeuralNet
 from MCTS import MCTS, MCTS_Node
-import copy
-import time
-import torch
-import json
+
 
 start_time = time.time()
 
@@ -39,8 +47,8 @@ def play_games(state_node, first_model, second_model, tree_search, n_of_games):
 
 if __name__ == "__main__":
 
-    model1_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_MANGO_sixthraining8000games_64batchsize.pth'
-    model2_path = r'C:\Users\Bogazici\Desktop\MCTS with NNs\models\10_05_25_model_MANGO_fourthtraining16000games.pth'
+    model1_path = r''
+    model2_path = r''
     initial_board_state = MCTS_Node(np.array([4,4,4,4,4,4,0,4,4,4,4,4,4,0])) 
 
     Game = Game()
@@ -63,8 +71,9 @@ if __name__ == "__main__":
     print(f"Model 1 points: {n_of_model1_wins + n_of_draws * 0.5}")
     print(f"Model 2 points: {n_of_model2_wins + n_of_draws * 0.5}")
 
-    # Save the games to a JSON file
-    with open(r'C:\Users\Bogazici\Desktop\MCTS with NNs\games\08_05_25_100g_40s_MANGO_fifthtraining_vs_fourthtraining.json', 'w') as file:
+    # Save the games 
+    save_path = " "
+    with open(save_path, 'w') as file:
         json.dump(games, file)
 
     print("--- %s seconds ---" % (time.time() - start_time))

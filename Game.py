@@ -1,5 +1,12 @@
-import numpy as np
+"""
+This file contains the game logic. It takes a move as input and returns the resulting next state after taking that move.
+It also contains a method to decide the winner when given a game state.
+
+"""
+
 import copy
+import numpy as np
+
 
 class Game():
     """
@@ -10,7 +17,7 @@ class Game():
         board_state = copy.deepcopy(current_board_state)
         if action > 5:
             raise ValueError("This isn't an allowed action")
-        # We remove the last element of the board state (we will eventually add it back at the end) which corresponds to the enemy treasure because no action we take can affect it and it is more convenient this way
+        # We remove the last element of the board state (we will eventually add it back at the end) which corresponds to the enemy's treasure because no action we take can affect it and it is more convenient this way
         enemy_treasure = board_state[-1]
         board_state = board_state[:-1]
         value = board_state[action]
